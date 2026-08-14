@@ -157,6 +157,13 @@ public:
     void resize(size_t newSize);
 
     /**
+     * Resizes the pector to match newSize.
+     * @param newSize the desired size
+     * @param value the value to fill the empty slots with
+     */
+    void resize(size_t newSize, const T &value);
+
+    /**
      * Releases all heap-allocated memory.
      */
     void release();
@@ -274,7 +281,7 @@ inline T& sge::pector<T, PAGE_BITS, Allocator>::operator[](size_t index)
 template<typename T, size_t PAGE_BITS, typename Allocator>
 inline const T& sge::pector<T, PAGE_BITS, Allocator>::operator[](size_t index) const
 {
-    assert(index< this->m_size && "[pector]::operator[](size_t index) | Error. index >= size()");
+    assert(index < this->m_size && "[pector]::operator[](size_t index) | Error. index >= size()");
     
     size_t pageIndex = this->getPageIndex(index);
     size_t offset = this->getElementOffset(index);
@@ -430,6 +437,12 @@ inline void sge::pector<T, PAGE_BITS, Allocator>::reserve(size_t newCapacity)
 template <typename T, size_t PAGE_BITS, typename Allocator>
 inline void sge::pector<T, PAGE_BITS, Allocator>::resize(size_t newSize)
 {
+    this->resize(newSize, T());
+}
+
+template <typename T, size_t PAGE_BITS, typename Allocator>
+inline void sge::pector<T, PAGE_BITS, Allocator>::resize(size_t newSize, const T &value)
+{
     // Do nothing if sizes match.
     if (newSize == this->m_size) return;
     
@@ -454,9 +467,9 @@ inline void sge::pector<T, PAGE_BITS, Allocator>::resize(size_t newSize)
 
             T* curPage = this->m_pages[p];
             
-            for (size_t e = firstElem; e < lastElem; ++e)
+            for (size_t e = firstElem; e <= lastElem; ++e)
             {
-                PageTraits::construct(this->m_pageAlloc, std::addressof(curPage[e]), T());
+                PageTraits::construct(this->m_pageAlloc, std::addressof(curPage[e]), value);
             }
         }
     }
@@ -564,7 +577,7 @@ inline sge::pector<T, PAGE_BITS, Allocator>::iterator sge::pector<T, PAGE_BITS, 
         return iterator(nullptr, nullptr, nullptr);
     }
 
-    T** curPage = this->m_pages.data();
+    T** curPage = &this->m_pages[0];
     return iterator(curPage, curPage[0], curPage[0]);
 }
 
@@ -581,7 +594,7 @@ inline sge::pector<T, PAGE_BITS, Allocator>::iterator sge::pector<T, PAGE_BITS, 
     size_t pageIndex = this->getPageIndex(lastindex);
     size_t offset = this->getElementOffset(lastindex);
 
-    T** curPage = this->m_pages.data()[pageIndex];
+    T** curPage = &this->m_pages[pageIndex];
     T* pageBegin = *curPage;
 
     return iterator(curPage, pageBegin + offset + 1, pageBegin);
@@ -592,11 +605,11 @@ inline sge::pector<T, PAGE_BITS, Allocator>::const_iterator sge::pector<T, PAGE_
 {
     if (this->m_size == 0)
     {
-        return iterator(nullptr, nullptr, nullptr);
+        return const_iterator(nullptr, nullptr, nullptr);
     }
 
-    T** curPage = this->m_pages.data();
-    return iterator(const_cast<const T**>(curPage), curPage[0], curPage[0]);
+    T* const* curPage = &this->m_pages[0];
+    return const_iterator(const_cast<const T**>(curPage), curPage[0], curPage[0]);
 }
 
 template<typename T, size_t PAGE_BITS, typename Allocator>
@@ -604,7 +617,7 @@ inline sge::pector<T, PAGE_BITS, Allocator>::const_iterator sge::pector<T, PAGE_
 {
     if (this->m_size == 0)
     {
-        return iterator(nullptr, nullptr, nullptr);
+        return const_iterator(nullptr, nullptr, nullptr);
     }
 
     size_t lastindex = this->m_size - 1;
@@ -612,10 +625,10 @@ inline sge::pector<T, PAGE_BITS, Allocator>::const_iterator sge::pector<T, PAGE_
     size_t pageIndex = this->getPageIndex(lastindex);
     size_t offset = this->getElementOffset(lastindex);
 
-    T** curPage = this->m_pages.data()[pageIndex];
+    T* const* curPage = &this->m_pages[pageIndex];
     T* pageBegin = *curPage;
 
-    return iterator(const_cast<const T**>(curPage), pageBegin + offset + 1, pageBegin);
+    return const_iterator(const_cast<const T**>(curPage), pageBegin + offset + 1, pageBegin);
 }
 
 #endif // SGE_PECTOR_H

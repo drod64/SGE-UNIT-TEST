@@ -2,6 +2,7 @@
 #define SGE_PECTOR_ITERATOR_H
 #include <type_traits>
 #include <iterator>
+#include <cassert>
 
 namespace sge {
 
@@ -11,10 +12,10 @@ class const_pector_iterator;
 template <typename T, size_t PAGE_SIZE>
 class pector_iterator {
 private:
-    // template <typename, size_t>
-    // friend class pector_iterator;
-    // template <typename, size_t>
-    // friend class const_pector_iterator<T, PAGE_SIZE>;
+    template <typename, size_t>
+    friend class pector_iterator;
+    template <typename, size_t>
+    friend class const_pector_iterator;
 
 public:
     using iterator_category = std::random_access_iterator_tag;
@@ -25,9 +26,9 @@ public:
     using difference_type = std::ptrdiff_t;
 
 private:
-    pointer* m_curPage;
-    pointer m_curElement;
-    pointer m_pageBegin;
+    pointer* m_curPage = nullptr;
+    pointer m_curElement = nullptr;
+    pointer m_pageBegin = nullptr;
 
 public:
     pector_iterator() = default;
@@ -40,11 +41,13 @@ public:
 
     reference operator*() const
     {
+        assert(this->m_curElement != nullptr && "[pector_iterator]::operator*() | Error. Cannot dereference nullptr.");
         return *this->m_curElement;
     }
-
+    
     pointer operator->() const
     {
+        assert(this->m_curElement != nullptr && "[pector_iterator]::operator->() | Error. m_curElement == nullptr.");
         return this->m_curElement;
     }
 
@@ -55,6 +58,9 @@ public:
 
     pector_iterator& operator++()
     {
+        assert(this->m_curElement && "[pector_iterator]:: operator++() | Error. m_curElement == nullptr.");
+        assert(this->m_curPage && "[pector_iterator]:: operator++() | Error. m_curPage == nullptr.");
+        assert(this->m_pageBegin && "[pector_iterator]:: operator++() | Error. m_pageBegin == nullptr.");
         ++this->m_curElement;
 
         if (this->m_curElement == this->m_pageBegin + PAGE_SIZE)
@@ -79,6 +85,10 @@ public:
 
     pector_iterator& operator--()
     {
+        assert(this->m_curElement && "[pector_iterator]:: operator--() | Error. m_curElement == nullptr.");
+        assert(this->m_curPage && "[pector_iterator]:: operator--() | Error. m_curPage == nullptr.");
+        assert(this->m_pageBegin && "[pector_iterator]:: operator--() | Error. m_pageBegin == nullptr.");
+
         if (this->m_curElement == this->m_pageBegin)
         {
             --this->m_curPage;
@@ -99,6 +109,10 @@ public:
 
     pector_iterator& operator+=(difference_type n)
     {
+        assert(this->m_curElement && "[pector_iterator]:: operator+=() | Error. m_curElement == nullptr.");
+        assert(this->m_curPage && "[pector_iterator]:: operator+=() | Error. m_curPage == nullptr.");
+        assert(this->m_pageBegin && "[pector_iterator]:: operator+=() | Error. m_pageBegin == nullptr.");
+
         if (n == 0) return *this;
 
         difference_type curOffset = this->m_curElement - this->m_pageBegin;
@@ -147,6 +161,14 @@ public:
 
     friend difference_type operator-(const pector_iterator &lhs, const pector_iterator &rhs)
     {
+        assert(lhs.m_curElement && "[pector_iterator]:: operator-(lhs, rhs) | Error. lhs.m_curElement == nullptr.");
+        assert(lhs.m_curPage && "[pector_iterator]:: operator-(lhs, rhs) | Error. lhs.m_curPage == nullptr.");
+        assert(lhs.m_pageBegin && "[pector_iterator]:: operator-(lhs, rhs) | Error. lhs.m_pageBegin == nullptr.");
+
+        assert(rhs.m_curElement && "[pector_iterator]:: operator-(lhs, rhs) | Error. rhs.m_curElement == nullptr.");
+        assert(rhs.m_curPage && "[pector_iterator]:: operator-(lhs, rhs) | Error. rhs.m_curPage == nullptr.");
+        assert(rhs.m_pageBegin && "[pector_iterator]:: operator-(lhs, rhs) | Error. rhs.m_pageBegin == nullptr.");
+
         if (!lhs.m_curElement && !rhs.m_curElement) return 0;
 
         difference_type pageDist    = lhs.m_curPage - rhs.m_curPage;
@@ -161,35 +183,21 @@ public:
         return lhs.m_curElement == rhs.m_curElement;
     }
 
-    friend bool operator!=(const pector_iterator &lhs, const pector_iterator &rhs)
+    friend auto operator<=>(const pector_iterator &lhs, const pector_iterator &rhs)
     {
-        return !(lhs == rhs);
-    }
-
-    friend bool operator<(const pector_iterator &lhs, const pector_iterator &rhs)
-    {
-        return (lhs - rhs) < 0;
-    }
-
-    friend bool operator>(const pector_iterator &lhs, const pector_iterator &rhs)
-    {
-        return rhs < lhs;
-    }
-
-    friend bool operator<=(const pector_iterator &lhs, const pector_iterator &rhs)
-    {
-        return !(rhs < lhs);
-    }
-    friend bool operator>=(const pector_iterator &lhs, const pector_iterator &rhs)
-    {
-        return !(lhs < rhs);
+        if (auto cmp = lhs.m_curPage <=> rhs.m_curPage; cmp != 0)
+        {
+            return cmp;
+        }
+        
+        return lhs.m_curElement <=> rhs.m_curElement;
     }
 }; // class pector_iterator
 
 template <typename T, size_t PAGE_SIZE>
 class const_pector_iterator {
 private:
-    template <typename>
+    template <typename, size_t>
     friend class const_pector_iterator;
 
 public:
@@ -222,11 +230,13 @@ public:
 
     reference operator*() const
     {
+        assert(this->m_curElement != nullptr && "[const_pector_iterator]::operator*() | Error. Cannot dereference nullptr.");
         return *this->m_curElement;
     }
-
+    
     pointer operator->() const
     {
+        assert(this->m_curElement != nullptr && "[const_pector_iterator]::operator->() | Error. m_curElement == nullptr.");
         return this->m_curElement;
     }
 
@@ -237,6 +247,9 @@ public:
 
     const_pector_iterator& operator++()
     {
+        assert(this->m_curElement && "[const_pector_iterator]:: operator++() | Error. m_curElement == nullptr.");
+        assert(this->m_curPage && "[const_pector_iterator]:: operator++() | Error. m_curPage == nullptr.");
+        assert(this->m_pageBegin && "[const_pector_iterator]:: operator++() | Error. m_pageBegin == nullptr.");
         ++this->m_curElement;
 
         if (this->m_curElement == this->m_pageBegin + PAGE_SIZE)
@@ -261,6 +274,10 @@ public:
 
     const_pector_iterator& operator--()
     {
+        assert(this->m_curElement && "[const_pector_iterator]:: operator--() | Error. m_curElement == nullptr.");
+        assert(this->m_curPage && "[const_pector_iterator]:: operator--() | Error. m_curPage == nullptr.");
+        assert(this->m_pageBegin && "[const_pector_iterator]:: operator--() | Error. m_pageBegin == nullptr.");
+
         if (this->m_curElement == this->m_pageBegin)
         {
             --this->m_curPage;
@@ -281,6 +298,10 @@ public:
 
     const_pector_iterator& operator+=(difference_type n)
     {
+        assert(this->m_curElement && "[const_pector_iterator]:: operator+=() | Error. m_curElement == nullptr.");
+        assert(this->m_curPage && "[const_pector_iterator]:: operator+=() | Error. m_curPage == nullptr.");
+        assert(this->m_pageBegin && "[const_pector_iterator]:: operator+=() | Error. m_pageBegin == nullptr.");
+
         if (n == 0) return *this;
 
         difference_type curOffset = this->m_curElement - this->m_pageBegin;
@@ -329,6 +350,14 @@ public:
 
     friend difference_type operator-(const const_pector_iterator &lhs, const const_pector_iterator &rhs)
     {
+        assert(lhs.m_curElement && "[const_pector_iterator]:: operator-(lhs, rhs) | Error. lhs.m_curElement == nullptr.");
+        assert(lhs.m_curPage && "[const_pector_iterator]:: operator-(lhs, rhs) | Error. lhs.m_curPage == nullptr.");
+        assert(lhs.m_pageBegin && "[const_pector_iterator]:: operator-(lhs, rhs) | Error. lhs.m_pageBegin == nullptr.");
+
+        assert(rhs.m_curElement && "[const_pector_iterator]:: operator-(lhs, rhs) | Error. rhs.m_curElement == nullptr.");
+        assert(rhs.m_curPage && "[const_pector_iterator]:: operator-(lhs, rhs) | Error. rhs.m_curPage == nullptr.");
+        assert(rhs.m_pageBegin && "[const_pector_iterator]:: operator-(lhs, rhs) | Error. rhs.m_pageBegin == nullptr.");
+
         if (!lhs.m_curElement && !rhs.m_curElement) return 0;
 
         difference_type pageDist    = lhs.m_curPage - rhs.m_curPage;
@@ -343,28 +372,14 @@ public:
         return lhs.m_curElement == rhs.m_curElement;
     }
 
-    friend bool operator!=(const const_pector_iterator &lhs, const const_pector_iterator &rhs)
+    friend auto operator<=>(const const_pector_iterator &lhs, const const_pector_iterator &rhs)
     {
-        return !(lhs == rhs);
-    }
-
-    friend bool operator<(const const_pector_iterator &lhs, const const_pector_iterator &rhs)
-    {
-        return (lhs - rhs) < 0;
-    }
-
-    friend bool operator>(const const_pector_iterator &lhs, const const_pector_iterator &rhs)
-    {
-        return rhs < lhs;
-    }
-
-    friend bool operator<=(const const_pector_iterator &lhs, const const_pector_iterator &rhs)
-    {
-        return !(rhs < lhs);
-    }
-    friend bool operator>=(const const_pector_iterator &lhs, const const_pector_iterator &rhs)
-    {
-        return !(lhs < rhs);
+        if (auto cmp = lhs.m_curPage <=> rhs.m_curPage; cmp != 0)
+        {
+            return cmp;
+        }
+        
+        return lhs.m_curElement <=> rhs.m_curElement;
     }
 }; // class const_pector_iterator
 } // namespace sge

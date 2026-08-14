@@ -1,11 +1,14 @@
 #include <TEST/unit-tests/pector_tester.h>
 #include <iostream>
+#include <algorithm>
 
 void test::pector_tester::run()
 {
     this->appendAndAccess();
 
     this->reserveAndResize();
+
+    this->iterator();
 
     this->moveSemantics();
 }
@@ -30,35 +33,60 @@ void test::pector_tester::reserveAndResize()
 {
     sge::pector<std::string> p;
 
-    // p.resize(10);
+    p.resize(9000);
+    assert(p[0] == "");
+    assert(p[8999] == "");
+    assert(p.capacity() == 9216);
+    p.release();
+
+    p.resize(10);
     p.reserve(13045);
     assert(p.capacity() == 13312);
     
     p.resize(100);
-    
+
     assert(p.size() == 100);
     assert(p.capacity() == 13312);
 
     p.release();
-
     assert(p.size() == 0);
     assert(p.capacity() == 0);
     assert(p.empty());
+
+    p.reserve(9000);
+    assert(p.capacity() == 9216);
+
+    p.release();
+    p.resize(100, "bruh");
+    assert(p[0] == "bruh");
+    assert(p[49] == "bruh");
+    assert(p[99] == "bruh");
 }
 
 void test::pector_tester::iterator()
 {
     sge::pector<std::string> p;
 
-    p.resize(1505);
+    p.resize(1505, "Hi");
 
-    assert(p.size() == 1505);
-    assert(p.capacity() == 2048);
+    auto itb = p.begin();
+    auto ite = p.end();
 
-    // for (auto it = p.begin(); it != p.end(); ++it)
-    // {
-    //     std::cout << *it << '\n';
-    // }
+    auto dist = ite - itb;
+
+    assert(dist == 1505);
+
+    sge::pector<int> sortPector;
+    for (int i = 0; i < 100; ++i)
+    {
+        sortPector.push_back(100 - i);
+    }
+
+    std::sort(sortPector.begin(), sortPector.end());
+
+    assert(sortPector[0] == 1);
+    assert(sortPector[49] == 50);
+    assert(sortPector[99] == 100);
 }
 
 void test::pector_tester::moveSemantics()
