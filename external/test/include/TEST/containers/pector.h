@@ -4,6 +4,7 @@
 #include <vector>
 #include <cstring>
 #include <cassert>
+#include <iostream>
 #include <TEST/iterators/pector_iterator.h>
 
 namespace sge {
@@ -19,8 +20,8 @@ public:
     using PageTraits    = std::allocator_traits<PageAlloc>;
     using PagePtrAlloc  = typename AllocTraits::template rebind_alloc<T*>;
 
-    using iterator          = pector_iterator<T, ELEMENTS_PER_PAGE>;
-    using const_iterator    = const_pector_iterator<T, ELEMENTS_PER_PAGE>;
+    using iterator          = pector_iterator<T, PAGE_BITS>;
+    using const_iterator    = const_pector_iterator<T, PAGE_BITS>;
 
     static_assert(
         AllocTraits::propagate_on_container_move_assignment::value ||
@@ -222,7 +223,7 @@ inline size_t sge::pector<T, PAGE_BITS, Allocator>::getRequiredPages(size_t elem
 template<typename T, size_t PAGE_BITS, typename Allocator>
 inline size_t sge::pector<T, PAGE_BITS, Allocator>::totalPages() const noexcept
 {
-    return this->m_pages.size();
+    return (this->m_pages.empty()) ? 0: this->m_pages.size() - 1;
 }
 
 template<typename T, size_t PAGE_BITS, typename Allocator>
@@ -434,8 +435,8 @@ inline void sge::pector<T, PAGE_BITS, Allocator>::reserve(size_t newCapacity)
     // Return if we have enough capacity.
     if (requiredPages <= oldPageCount) return;
 
-    // Resize master directory.
-    this->m_pages.resize(requiredPages, nullptr);
+    // Resize master directory (+1 for dummy pointer).
+    this->m_pages.resize(requiredPages + 1, nullptr);
 
     // Allocate uninitialized memory for future use.
     for (size_t i = oldPageCount; i < requiredPages; ++i)
@@ -552,9 +553,9 @@ inline void sge::pector<T, PAGE_BITS, Allocator>::release()
     }
 
     // Deallocate pages.
-    for (T* page : this->m_pages)
+    for (size_t i = 0; i < this->totalPages(); ++i)
     {
-        PageTraits::deallocate(this->m_pageAlloc, page, ELEMENTS_PER_PAGE);
+        PageTraits::deallocate(this->m_pageAlloc, this->m_pages[i], ELEMENTS_PER_PAGE);
     }
 
     // Reset trackers.
@@ -589,15 +590,25 @@ inline sge::pector<T, PAGE_BITS, Allocator>::iterator sge::pector<T, PAGE_BITS, 
         return this->end();
     }
 
-    return iterator(&this->m_pages[0], this->m_pages[0], &this->m_pages[0]);
+    T** firstPage = &this->m_pages[0];
+
+    return iterator(firstPage, 0);
 }
 
 template<typename T, size_t PAGE_BITS, typename Allocator>
 inline sge::pector<T, PAGE_BITS, Allocator>::iterator sge::pector<T, PAGE_BITS, Allocator>::end() noexcept
 {
-    T* *endPage = &this->m_pages[this->m_pages.size() - 1];
+    if (this->m_size == 0)
+    {
+        return iterator(nullptr, 0);
+    }
+
+    size_t pageIndex = this->getPageIndex(this->m_size);
+    size_t offset = this->getElementOffset(this->m_size);
+
+    T* *endPage = &this->m_pages[pageIndex];
     
-    return iterator(endPage, *endPage, &this->m_pages[0]);
+    return iterator(endPage, offset);
 }
 
 template<typename T, size_t PAGE_BITS, typename Allocator>
@@ -608,15 +619,25 @@ inline sge::pector<T, PAGE_BITS, Allocator>::const_iterator sge::pector<T, PAGE_
         return this->cend();
     }
 
-    return const_iterator(&this->m_pages[0], this->m_pages[0], &this->m_pages[0]);
+    T* const* firstPage = &this->m_pages[0];
+
+    return const_iterator(firstPage, 0);
 }
 
 template<typename T, size_t PAGE_BITS, typename Allocator>
 inline sge::pector<T, PAGE_BITS, Allocator>::const_iterator sge::pector<T, PAGE_BITS, Allocator>::cend() const noexcept
 {
-    T* const *endPage = &this->m_pages[this->m_pages.size() - 1];
+    if (this->m_size == 0)
+    {
+        return iterator(nullptr, 0);
+    }
+
+    size_t pageIndex = this->getPageIndex(this->m_size);
+    size_t offset = this->getElementOffset(this->m_size);
+
+    T* const *endPage = &this->m_pages[pageIndex];
     
-    return const_iterator(endPage, *endPage, &this->m_pages[0]);
+    return const_iterator(endPage, offset);
 }
 
 #endif // SGE_PECTOR_H

@@ -65,28 +65,146 @@ void test::pector_tester::reserveAndResize()
 
 void test::pector_tester::iterator()
 {
-    sge::pector<std::string> p;
+    std::cout << "Starting sge::pector iterator test suite...\n";
 
-    p.resize(1505, "Hi");
-
-    auto itb = p.begin();
-    auto ite = p.end();
-
-    auto dist = ite - itb;
-
-    assert(dist == 1505);
-
-    sge::pector<int> sortPector;
-    for (int i = 0; i < 100; ++i)
+    // =========================================================================
+    // Edge Case 1: The Completely Empty State
+    // =========================================================================
     {
-        sortPector.push_back(100 - i);
+        sge::pector<std::string> p;
+        assert(p.begin() == p.end());
+        
+        // Ensure range-based for loops exit immediately without a single step.
+        size_t loopCount = 0;
+        for (const auto& str : p) {
+            (void)str;
+            ++loopCount;
+        }
+        assert(loopCount == 0);
+        std::cout << " -> Empty state boundary passed.\n";
     }
 
-    std::sort(sortPector.begin(), sortPector.end());
+    // =========================================================================
+    // Edge Case 2: Exact Page Boundary Alignment (No Dummy Page)
+    // =========================================================================
+    {
+        sge::pector<std::string> p;
+        p.reserve(p.ELEMENTS_PER_PAGE);
 
-    assert(sortPector[0] == 1);
-    assert(sortPector[49] == 50);
-    assert(sortPector[99] == 100);
+        for (size_t i = 0; i < p.ELEMENTS_PER_PAGE; ++i)
+        {
+            p.push_back("item_" + std::to_string(i));
+        }
+
+        auto it = p.begin();
+        it += p.ELEMENTS_PER_PAGE; // Jump exactly to the end edge.
+        assert(it == p.end());
+        
+        // Verifying distance math.
+        assert((p.end() - p.begin()) == static_cast<ptrdiff_t>(p.ELEMENTS_PER_PAGE));
+        assert((p.end() - p.begin()) == static_cast<ptrdiff_t>(p.size()));
+        std::cout << " -> Exact single-page boundary passed.\n";
+    }
+
+    // =========================================================================
+    // Edge Case 3: Sequential & Multi-Page Boundary Jumps (operator+=)
+    // =========================================================================
+    {
+        sge::pector<std::string> p;
+        // Fill across two full pages into a third page (e.g., 2200 items).
+        for (size_t i = 0; i < 2200; ++i) {
+            p.push_back("val_" + std::to_string(i));
+        }
+
+        // Test sequential step crossing exactly at the Page 0 -> Page 1 border.
+        auto it = p.begin();
+        it += (p.ELEMENTS_PER_PAGE - 1); // Sit at index 1023 (last item of Page 0).
+        assert(*it == "val_1023");
+        
+        ++it; // This step must trigger the page-flip branch seamlessly.
+        assert(*it == "val_1024"); // First item of Page 1.
+
+        // Test a massive random-access jump skipping over an entire page block.
+        auto jumpIt = p.begin();
+        jumpIt += 2118; // Jump from Page 0 into Page 2.
+        assert(*jumpIt == "val_2118");
+
+        // Test ++operator/--operator on end() edge.
+        auto lastValid = p.end() - 1;
+        ++lastValid;
+        assert(lastValid == p.end());
+
+        --lastValid;
+        assert(*lastValid == "val_2199");
+
+        std::cout << " -> Forward multi-page jumping passed.\n";
+    }
+
+    // =========================================================================
+    // Edge Case 4: Reverse Page Traversal (operator-=)
+    // =========================================================================
+    {
+        sge::pector<std::string> p;
+        for (size_t i = 0; i < 2200; ++i) {
+            p.push_back("val_" + std::to_string(i));
+        }
+
+        // Sit precisely at the first element of Page 1 (index 1024).
+        auto it = p.begin();
+        it += p.ELEMENTS_PER_PAGE; 
+        assert(*it == "val_1024");
+
+        --it; // This decrement must safely step back across the page boundary wall.
+        assert(*it == "val_1023");
+
+        // Test a massive relative subtraction backtracking leap.
+        auto backIt = p.end();
+        --backIt; // Sit at index 1099
+        backIt -= 1110; // Jump backward into a completely different page chunk.
+        assert(*backIt == "val_1089");
+        std::cout << " -> Backward page-reversal backtracking passed.\n";
+    }
+
+    // =========================================================================
+    // Edge Case 5: Relational Sorting Integration (std::sort & <=> Check)
+    // =========================================================================
+    {
+        sge::pector<std::string, 9> p;
+        // Seed strings in reverse order across multiple page chunks.
+        for (int i = 1200; i >= 0; --i) {
+            p.push_back("padded_num_" + std::to_string(10000 + i)); 
+        }
+
+        // std::sort tests random-access spacing, less-than pivots, and bracket swapping.
+        std::sort(p.begin(), p.end());
+
+        assert(std::is_sorted(p.begin(), p.end()));
+        assert(*p.begin() == "padded_num_10000");
+        assert(*(p.end() - 1) == "padded_num_11200");
+        std::cout << " -> C++ Standard algorithm compatibility passed.\n";
+    }
+
+    // =========================================================================
+    // Edge Case 6: Memory Mutations (Clear & Resize Invalidation)
+    // =========================================================================
+    {
+        sge::pector<std::string> p;
+        p.push_back("safe_string");
+        
+        auto oldIt = p.begin();
+        assert(*oldIt == "safe_string");
+
+        // calling clear() should cleanly detach active storage trackers.
+        p.clear();
+        assert(p.begin() == p.end());
+        
+        // Re-filling after clear to verify factory baseline initialization.
+        p.push_back("new_string");
+        assert(*p.begin() == "new_string");
+        std::cout << " -> Mutation tracking / container clearing passed.\n";
+    }
+
+    std::cout << "All sge::pector convenience iterator edge-cases passed successfully!\n\n";
 }
 
 void test::pector_tester::moveSemantics()
