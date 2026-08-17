@@ -65,8 +65,6 @@ void test::pector_tester::reserveAndResize()
 
 void test::pector_tester::iterator()
 {
-    std::cout << "Starting sge::pector iterator test suite...\n";
-
     // =========================================================================
     // Edge Case 1: The Completely Empty State
     // =========================================================================
@@ -81,7 +79,6 @@ void test::pector_tester::iterator()
             ++loopCount;
         }
         assert(loopCount == 0);
-        std::cout << " -> Empty state boundary passed.\n";
     }
 
     // =========================================================================
@@ -103,7 +100,6 @@ void test::pector_tester::iterator()
         // Verifying distance math.
         assert((p.end() - p.begin()) == static_cast<ptrdiff_t>(p.ELEMENTS_PER_PAGE));
         assert((p.end() - p.begin()) == static_cast<ptrdiff_t>(p.size()));
-        std::cout << " -> Exact single-page boundary passed.\n";
     }
 
     // =========================================================================
@@ -136,8 +132,6 @@ void test::pector_tester::iterator()
 
         --lastValid;
         assert(*lastValid == "val_2199");
-
-        std::cout << " -> Forward multi-page jumping passed.\n";
     }
 
     // =========================================================================
@@ -162,7 +156,6 @@ void test::pector_tester::iterator()
         --backIt; // Sit at index 1099
         backIt -= 1110; // Jump backward into a completely different page chunk.
         assert(*backIt == "val_1089");
-        std::cout << " -> Backward page-reversal backtracking passed.\n";
     }
 
     // =========================================================================
@@ -181,7 +174,6 @@ void test::pector_tester::iterator()
         assert(std::is_sorted(p.begin(), p.end()));
         assert(*p.begin() == "padded_num_10000");
         assert(*(p.end() - 1) == "padded_num_11200");
-        std::cout << " -> C++ Standard algorithm compatibility passed.\n";
     }
 
     // =========================================================================
@@ -201,7 +193,6 @@ void test::pector_tester::iterator()
         // Re-filling after clear to verify factory baseline initialization.
         p.push_back("new_string");
         assert(*p.begin() == "new_string");
-        std::cout << " -> Mutation tracking / container clearing passed.\n";
     }
 
     std::cout << "All sge::pector convenience iterator edge-cases passed successfully!\n\n";

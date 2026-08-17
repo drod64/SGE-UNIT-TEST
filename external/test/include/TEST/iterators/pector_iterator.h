@@ -5,21 +5,18 @@
 #include <cassert>
 
 namespace sge {
-template <typename T, size_t PAGE_BITS>
+template <typename T, typename Container>
 class const_pector_iterator;
 
-template <typename T, size_t PAGE_BITS>
+template <typename T, typename Container>
 class pector_iterator {
 private:
-    template <typename, size_t>
+    template <typename, typename>
     friend class pector_iterator;
-    template <typename, size_t>
+    template <typename, typename>
     friend class const_pector_iterator;
 
 public:
-    static constexpr size_t ELEMENTS_PER_PAGE = 1ULL << PAGE_BITS;
-    static constexpr size_t PAGE_MASK = ELEMENTS_PER_PAGE - 1;
-
     using iterator_category = std::random_access_iterator_tag;
     using iterator_concept = std::random_access_iterator_tag;
     using value_type = T;
@@ -28,54 +25,37 @@ public:
     using difference_type = std::ptrdiff_t;
 
 private:
-    pointer*        m_page      = nullptr;
-    pointer         m_cur       = nullptr;
-    pointer         m_first     = nullptr;
-    pointer         m_end       = nullptr;
+    Container *m_parent = nullptr;
+    size_t m_index = 0;
 
 public:
-    pector_iterator() = default;
-
-    pector_iterator(pointer* currentPage, size_t pageOffset) :
-    m_page(currentPage)
-    {
-        if (this->m_page)
-        {
-            this->m_first = *this->m_page;
-            this->m_end = this->m_first + ELEMENTS_PER_PAGE;
-            this->m_cur = this->m_first + pageOffset;
-        }
-    }
+    pector_iterator(Container *parent, size_t index) :
+    m_parent(parent),
+    m_index(index)
+    {}
 
     reference operator*() const
     {
-        assert(this->m_cur && "[pector_iterator]::operator*() | Error. Attempt to dereference nullptr.");
-        return *this->m_cur;
+        assert(this->m_parent && "[pector_iterator]::operator*() | Attempt to dereference .end().");
+        return this->m_parent->operator[](this->m_index);
     }
     
     pointer operator->() const
     {
-        assert(this->m_cur && "[pector_iterator]::operator*() | Error. Attempt to dereference nullptr.");
-        return this->m_cur;
+        assert(this->m_parent && "[pector_iterator]::operator*() | Attempt to dereference .end().");
+        return &this->m_parent->operator[](this->m_index);
     }
 
     reference operator[](difference_type n) const
     {
+        assert(this->m_index + n <= this->m_parent->size() && "[pector_iterator]::operator(difference_type n) | Attempt to exceed .end().");
         return *(*this + n);
     }
 
     pector_iterator& operator++()
     {
-        ++this->m_cur;
-
-        if (this->m_cur == this->m_end)
-        {
-            ++this->m_page;
-            this->m_first = *this->m_page;
-            this->m_end = this->m_first + ELEMENTS_PER_PAGE;
-            this->m_cur = this->m_first;
-        }
-
+        assert(this->m_index + 1 <= this->m_parent->size() && "[pector_iterator]::operator++() | Attempt to exceed .end().");
+        ++this->m_index;
         return *this;
     }
 
@@ -88,18 +68,8 @@ public:
 
     pector_iterator& operator--()
     {
-        if (this->m_cur == this->m_first)
-        {
-            --this->m_page;
-            this->m_first = *this->m_page;
-            this->m_end = this->m_first + ELEMENTS_PER_PAGE;
-            this->m_cur = this->m_end - 1;
-        }
-        else
-        {
-            --this->m_cur;
-        }
-
+        assert(this->m_index - 1 >= 0 && "[pector_iterator]::operator--() | Attempt to decrement before valid index (0).");
+        --this->m_index;
         return *this;
     }
 
@@ -112,52 +82,15 @@ public:
 
     pector_iterator& operator+=(difference_type n)
     {
-        if (n == 0) return *this;
-        if (n < 0) return *this -= (-n);
-
-        difference_type curOffset = this->m_cur - this->m_first;
-        difference_type targetOffset = curOffset + n;
-        
-        if (targetOffset >= 0 && targetOffset < static_cast<difference_type>(ELEMENTS_PER_PAGE))
-        {
-            this->m_cur += n;
-        }
-        else
-        {
-            difference_type pagesToJump = targetOffset >> PAGE_BITS;
-            
-            this->m_page += pagesToJump;
-            
-            this->m_first = *this->m_page;
-            this->m_end = this->m_first + ELEMENTS_PER_PAGE;
-            this->m_cur = this->m_first + (targetOffset & PAGE_MASK);
-        }
-
+        assert(this->m_index + n <= this->m_parent->size() && "[pector_iterator]::operator+=(difference_type n) | Attempt to exceed .end().");
+        this->m_index += n;
         return *this;
     }
 
     pector_iterator& operator-=(difference_type n)
     {
-        if (n == 0) return *this;
-        if (n < 0) return *this += (-n);
-
-        difference_type curOffset = this->m_cur - this->m_first;
-
-        if (n > curOffset)
-        {
-            difference_type targetOffset = curOffset - n;
-            difference_type pagesToBacktrack = (-targetOffset + ELEMENTS_PER_PAGE - 1) >> PAGE_BITS;
-
-            this->m_page -= pagesToBacktrack;
-            this->m_first = *this->m_page;
-            this->m_end = this->m_first + ELEMENTS_PER_PAGE;
-            this->m_cur = this->m_end + (targetOffset % static_cast<difference_type>(ELEMENTS_PER_PAGE));
-        }
-        else
-        {
-            this->m_cur -= n;
-        }
-
+        assert(this->m_index - n >= 0 && "[pector_iterator]::operator-=(difference_type n) | Attempt to decrement before valid index (0).");
+        this->m_index -= n;
         return *this;
     }
 
@@ -181,104 +114,76 @@ public:
 
     friend difference_type operator-(const pector_iterator &lhs, const pector_iterator &rhs)
     {
-        if (!lhs.m_page && !rhs.m_page) return 0;
-
-        difference_type pageDist    = lhs.m_page - rhs.m_page;
-        difference_type lhsOffset   = lhs.m_cur - lhs.m_first;
-        difference_type rhsOffset   = rhs.m_cur - rhs.m_first;
-
-        return (pageDist << PAGE_BITS) + lhsOffset - rhsOffset;
+        return lhs.m_index - rhs.m_index;
     }
 
     friend bool operator==(const pector_iterator &lhs, const pector_iterator &rhs)
     {
-        return lhs.m_cur == rhs.m_cur;
+        return lhs.m_parent == rhs.m_parent && lhs.m_index == rhs.m_index;
     }
 
     friend auto operator<=>(const pector_iterator &lhs, const pector_iterator &rhs)
     {
-        if (lhs.m_page != rhs.m_page)
+        if (lhs.m_parent != rhs.m_parent)
         {
-            return lhs.m_page <=> rhs.m_page;
+            return lhs.m_parent <=> rhs.m_parent;
         }
         
-        return lhs.m_cur <=> rhs.m_cur;
+        return lhs.m_index <=> rhs.m_index;
     }
 }; // class pector_iterator
 
-template <typename T, size_t PAGE_BITS>
+template <typename T, typename Container>
 class const_pector_iterator {
 private:
-    template <typename, size_t>
+    template <typename, typename>
     friend class const_pector_iterator;
 
 public:
-    static constexpr size_t ELEMENTS_PER_PAGE = 1ULL << PAGE_BITS;
-    static constexpr size_t PAGE_MASK = ELEMENTS_PER_PAGE - 1;
-
     using iterator_category = std::random_access_iterator_tag;
     using iterator_concept = std::random_access_iterator_tag;
     using value_type = T;
-    using pointer = const T*;
-    using reference = const T&;
+    using pointer = T*;
+    using reference = T&;
     using difference_type = std::ptrdiff_t;
 
 private:
-    pointer*        m_page      = nullptr;
-    pointer         m_cur       = nullptr;
-    pointer         m_first     = nullptr;
-    pointer         m_end       = nullptr;
+    Container *m_parent = nullptr;
+    size_t m_index = 0;
 
 public:
-    const_pector_iterator() = default;
-
-    const_pector_iterator(const pector_iterator<T, PAGE_BITS> &other) noexcept :
-    m_page(other.m_page),
-    m_cur(other.m_cur),
-    m_first(other.m_first),
-    m_end(other.m_end)
+    const_pector_iterator(const pector_iterator<T, Container> &other) :
+    m_parent(other.m_parent),
+    m_index(other.m_index)
     {}
 
-    const_pector_iterator(pointer* currentPage, size_t pageOffset) noexcept :
-    m_page(currentPage)
-    {
-        if (this->m_page)
-        {
-            this->m_first = *this->m_page;
-            this->m_end = this->m_first + ELEMENTS_PER_PAGE;
-            this->m_cur = this->m_first + pageOffset;
-        }
-    }
+    const_pector_iterator(Container *parent, size_t index) :
+    m_parent(parent),
+    m_index(index)
+    {}
 
     reference operator*() const
     {
-        assert(this->m_cur && "[const_pector_iterator]::operator*() | Error. Attempt to dereference nullptr.");
-        return *this->m_cur;
+        assert(this->m_parent && "[const_pector_iterator]::operator*() | Attempt to dereference .end().");
+        return this->m_parent->operator[](this->m_index);
     }
     
     pointer operator->() const
     {
-        assert(this->m_cur && "[const_pector_iterator]::operator*() | Error. Attempt to dereference nullptr.");
-        return this->m_cur;
+        assert(this->m_parent && "[const_pector_iterator]::operator*() | Attempt to dereference .end().");
+        return &this->m_parent->operator[](this->m_index);
     }
 
     reference operator[](difference_type n) const
     {
+        assert(this->m_index + n <= this->m_parent->size() && "[const_pector_iterator]::operator(difference_type n) | Attempt to exceed .end().");
         return *(*this + n);
     }
 
     const_pector_iterator& operator++()
     {
-        ++this->m_cur;
-
-        if (this->m_cur == this->m_end)
-        {
-            ++this->m_page;
-            this->m_first = *this->m_page;
-            this->m_end = this->m_first + ELEMENTS_PER_PAGE;
-            this->m_cur = this->m_first;
-        }
-
+        assert(this->m_index + 1 <= this->m_parent->size() && "[const_pector_iterator]::operator++() | Attempt to exceed .end().");
+        ++this->m_index;
         return *this;
     }
 
@@ -291,18 +196,8 @@ public:
 
     const_pector_iterator& operator--()
     {
-        if (this->m_cur == this->m_first)
-        {
-            --this->m_page;
-            this->m_first = *this->m_page;
-            this->m_end = this->m_first + ELEMENTS_PER_PAGE;
-            this->m_cur = this->m_end - 1;
-        }
-        else
-        {
-            --this->m_cur;
-        }
-
+        assert(this->m_index - 1 >= 0 && "[const_pector_iterator]::operator--() | Attempt to decrement before valid index (0).");
+        --this->m_index;
         return *this;
     }
 
@@ -315,52 +210,15 @@ public:
 
     const_pector_iterator& operator+=(difference_type n)
     {
-        if (n == 0) return *this;
-        if (n < 0) return *this -= (-n);
-
-        difference_type curOffset = this->m_cur - this->m_first;
-        difference_type targetOffset = curOffset + n;
-        
-        if (targetOffset >= 0 && targetOffset < static_cast<difference_type>(ELEMENTS_PER_PAGE))
-        {
-            this->m_cur += n;
-        }
-        else
-        {
-            difference_type pagesToJump = targetOffset >> PAGE_BITS;
-            
-            this->m_page += pagesToJump;
-            
-            this->m_first = *this->m_page;
-            this->m_end = this->m_first + ELEMENTS_PER_PAGE;
-            this->m_cur = this->m_first + (targetOffset & PAGE_MASK);
-        }
-
+        assert(this->m_index + n <= this->m_parent->size() && "[const_pector_iterator]::operator+=(difference_type n) | Attempt to exceed .end().");
+        this->m_index += n;
         return *this;
     }
 
     const_pector_iterator& operator-=(difference_type n)
     {
-        if (n == 0) return *this;
-        if (n < 0) return *this += (-n);
-
-        difference_type curOffset = this->m_cur - this->m_first;
-
-        if (n > curOffset)
-        {
-            difference_type targetOffset = curOffset - n;
-            difference_type pagesToBacktrack = (-targetOffset + ELEMENTS_PER_PAGE - 1) >> PAGE_BITS;
-
-            this->m_page -= pagesToBacktrack;
-            this->m_first = *this->m_page;
-            this->m_end = this->m_first + ELEMENTS_PER_PAGE;
-            this->m_cur = this->m_end + (targetOffset % static_cast<difference_type>(ELEMENTS_PER_PAGE));
-        }
-        else
-        {
-            this->m_cur -= n;
-        }
-
+        assert(this->m_index - n >= 0 && "[const_pector_iterator]::operator-=(difference_type n) | Attempt to decrement before valid index (0).");
+        this->m_index -= n;
         return *this;
     }
 
@@ -384,30 +242,25 @@ public:
 
     friend difference_type operator-(const const_pector_iterator &lhs, const const_pector_iterator &rhs)
     {
-        if (!lhs.m_page && !rhs.m_page) return 0;
-
-        difference_type pageDist    = lhs.m_page - rhs.m_page;
-        difference_type lhsOffset   = lhs.m_cur - lhs.m_first;
-        difference_type rhsOffset   = rhs.m_cur - rhs.m_first;
-
-        return (pageDist << PAGE_BITS) + lhsOffset - rhsOffset;
+        return lhs.m_index - rhs.m_index;
     }
 
     friend bool operator==(const const_pector_iterator &lhs, const const_pector_iterator &rhs)
     {
-        return lhs.m_cur == rhs.m_cur;
+        return lhs.m_parent == rhs.m_parent && lhs.m_index == rhs.m_index;
     }
 
     friend auto operator<=>(const const_pector_iterator &lhs, const const_pector_iterator &rhs)
     {
-        if (lhs.m_page != rhs.m_page)
+        if (lhs.m_parent != rhs.m_parent)
         {
-            return lhs.m_page <=> rhs.m_page;
+            return lhs.m_parent <=> rhs.m_parent;
         }
         
-        return lhs.m_cur <=> rhs.m_cur;
+        return lhs.m_index <=> rhs.m_index;
     }
 }; // class const_pector_iterator
+
 } // namespace sge
 
 #endif // SGE_PECTOR_ITERATOR_H
