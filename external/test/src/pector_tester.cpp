@@ -66,6 +66,9 @@ void test::pector_tester::reserveAndResize()
     assert(p[0] == "bruh");
     assert(p[49] == "bruh");
     assert(p[99] == "bruh");
+
+    p.pop_back();
+    assert(p.size() == 99);
 }
 
 void test::pector_tester::iterator()

@@ -4,6 +4,7 @@ project(TEST)
 
 set(SOURCE_FILES
     src/pector_tester.cpp
+    src/SparsePageTable_tester.cpp
 )
 
 add_library(${PROJECT_NAME} STATIC ${SOURCE_FILES})
