@@ -1,6 +1,7 @@
 #ifndef TEST_PECTOR_TESTER_H
 #define TEST_PECTOR_TESTER_H
 #include <string>
+#include <iostream>
 #include <TEST/containers/pector.h>
 
 namespace test {
@@ -25,9 +26,19 @@ private:
     void iterator();
 
     /**
+     * Tests the pector's const iterators.
+     */
+    void const_iterator();
+
+    /**
+     * Tests the pector's reverse iterators.
+     */
+    void reverse_iterator();
+
+    /**
      * Tests the pector's move semantics.
      */
-    void moveSemantics();
+    void moveAndSwapSemantics();
 
 }; // class pector_tester
 }; // namespace test

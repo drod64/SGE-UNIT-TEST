@@ -20,8 +20,10 @@ public:
     using PageTraits    = std::allocator_traits<PageAlloc>;
     using PagePtrAlloc  = typename AllocTraits::template rebind_alloc<T*>;
 
-    using iterator          = pector_iterator<T, pector>;
-    using const_iterator    = const_pector_iterator<T, pector>;
+    using iterator                  = pector_iterator<T, pector>;
+    using const_iterator            = const_pector_iterator<T, const pector>;
+    using reverse_iterator          = std::reverse_iterator<iterator>;
+    using const_reverse_iterator    = std::reverse_iterator<const_iterator>;
 
     static_assert(
         AllocTraits::propagate_on_container_move_assignment::value ||
@@ -194,9 +196,22 @@ public:
 
     iterator begin() noexcept;
     iterator end() noexcept;
-
+    
     const_iterator cbegin() const noexcept;
     const_iterator cend() const noexcept;
+
+    const_iterator begin() const noexcept;
+    const_iterator end() const noexcept;
+
+    reverse_iterator rbegin() noexcept;
+    reverse_iterator rend() noexcept;
+    
+    const_reverse_iterator crbegin() const noexcept;
+    const_reverse_iterator crend() const noexcept;
+
+    const_reverse_iterator rbegin() const noexcept;
+    const_reverse_iterator rend() const noexcept;
+
 }; // class pector
 } // namespace sge
 
@@ -620,10 +635,58 @@ inline sge::pector<T, PAGE_BITS, Allocator>::const_iterator sge::pector<T, PAGE_
 {
     if (this->m_size == 0)
     {
-        return iterator(nullptr, 0);
+        return const_iterator(nullptr, 0);
     }
     
     return const_iterator(this, this->m_size);
+}
+
+template<typename T, size_t PAGE_BITS, typename Allocator>
+inline sge::pector<T, PAGE_BITS, Allocator>::const_iterator sge::pector<T, PAGE_BITS, Allocator>::begin() const noexcept
+{
+    return this->cbegin();
+}
+
+template<typename T, size_t PAGE_BITS, typename Allocator>
+inline sge::pector<T, PAGE_BITS, Allocator>::const_iterator sge::pector<T, PAGE_BITS, Allocator>::end() const noexcept
+{
+    return this->cend();
+}
+
+template<typename T, size_t PAGE_BITS, typename Allocator>
+inline sge::pector<T, PAGE_BITS, Allocator>::reverse_iterator sge::pector<T, PAGE_BITS, Allocator>::rbegin() noexcept
+{
+    return std::make_reverse_iterator(this->end());
+}
+
+template<typename T, size_t PAGE_BITS, typename Allocator>
+inline sge::pector<T, PAGE_BITS, Allocator>::reverse_iterator sge::pector<T, PAGE_BITS, Allocator>::rend() noexcept
+{
+    return std::make_reverse_iterator(this->begin());
+}
+
+template<typename T, size_t PAGE_BITS, typename Allocator>
+inline sge::pector<T, PAGE_BITS, Allocator>::const_reverse_iterator sge::pector<T, PAGE_BITS, Allocator>::crbegin() const noexcept
+{
+    return std::make_reverse_iterator(this->cend());
+}
+
+template<typename T, size_t PAGE_BITS, typename Allocator>
+inline sge::pector<T, PAGE_BITS, Allocator>::const_reverse_iterator sge::pector<T, PAGE_BITS, Allocator>::crend() const noexcept
+{
+    return std::make_reverse_iterator(this->cbegin());
+}
+
+template<typename T, size_t PAGE_BITS, typename Allocator>
+inline sge::pector<T, PAGE_BITS, Allocator>::const_reverse_iterator sge::pector<T, PAGE_BITS, Allocator>::rbegin() const noexcept
+{
+    return this->crbegin();
+}
+
+template<typename T, size_t PAGE_BITS, typename Allocator>
+inline sge::pector<T, PAGE_BITS, Allocator>::const_reverse_iterator sge::pector<T, PAGE_BITS, Allocator>::rend() const noexcept
+{
+    return this->crend();
 }
 
 #endif // SGE_PECTOR_H

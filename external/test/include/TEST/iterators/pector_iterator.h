@@ -29,100 +29,100 @@ private:
     size_t m_index = 0;
 
 public:
-    pector_iterator(Container *parent, size_t index) :
+    inline pector_iterator(Container *parent, size_t index) noexcept :
     m_parent(parent),
     m_index(index)
     {}
 
-    reference operator*() const
+    inline reference operator*() const noexcept
     {
         assert(this->m_parent && "[pector_iterator]::operator*() | Attempt to dereference .end().");
         return this->m_parent->operator[](this->m_index);
     }
     
-    pointer operator->() const
+    inline pointer operator->() const noexcept
     {
         assert(this->m_parent && "[pector_iterator]::operator*() | Attempt to dereference .end().");
         return &this->m_parent->operator[](this->m_index);
     }
 
-    reference operator[](difference_type n) const
+    inline reference operator[](difference_type n) const noexcept
     {
         assert(this->m_index + n <= this->m_parent->size() && "[pector_iterator]::operator(difference_type n) | Attempt to exceed .end().");
         return *(*this + n);
     }
 
-    pector_iterator& operator++()
+    inline pector_iterator& operator++() noexcept
     {
         assert(this->m_index + 1 <= this->m_parent->size() && "[pector_iterator]::operator++() | Attempt to exceed .end().");
         ++this->m_index;
         return *this;
     }
 
-    pector_iterator operator++(int)
+    inline pector_iterator operator++(int) noexcept
     {
         pector_iterator temp = *this;
         ++(*this);
         return temp;
     }
 
-    pector_iterator& operator--()
+    inline pector_iterator& operator--() noexcept
     {
         assert(this->m_index - 1 >= 0 && "[pector_iterator]::operator--() | Attempt to decrement before valid index (0).");
         --this->m_index;
         return *this;
     }
 
-    pector_iterator operator--(int)
+    inline pector_iterator operator--(int) noexcept
     {
         pector_iterator temp = *this;
         --(*this);
         return temp;
     }
 
-    pector_iterator& operator+=(difference_type n)
+    inline pector_iterator& operator+=(difference_type n) noexcept
     {
         assert(this->m_index + n <= this->m_parent->size() && "[pector_iterator]::operator+=(difference_type n) | Attempt to exceed .end().");
         this->m_index += n;
         return *this;
     }
 
-    pector_iterator& operator-=(difference_type n)
+    inline pector_iterator& operator-=(difference_type n) noexcept
     {
         assert(this->m_index - n >= 0 && "[pector_iterator]::operator-=(difference_type n) | Attempt to decrement before valid index (0).");
         this->m_index -= n;
         return *this;
     }
 
-    friend pector_iterator operator+(pector_iterator it, difference_type n)
+    inline friend pector_iterator operator+(pector_iterator it, difference_type n) noexcept
     {
         it += n;
         return it;
     }
 
-    friend pector_iterator operator+(difference_type n, pector_iterator it)
+    inline friend pector_iterator operator+(difference_type n, pector_iterator it) noexcept
     {
         it += n;
         return it;
     }
 
-    friend pector_iterator operator-(pector_iterator it, difference_type n)
+    inline friend pector_iterator operator-(pector_iterator it, difference_type n) noexcept
     {
         it -= n;
         return it;
     }
 
-    friend difference_type operator-(const pector_iterator &lhs, const pector_iterator &rhs)
+    inline friend difference_type operator-(const pector_iterator &lhs, const pector_iterator &rhs) noexcept
     {
         return lhs.m_index - rhs.m_index;
     }
 
-    friend bool operator==(const pector_iterator &lhs, const pector_iterator &rhs)
+    inline friend bool operator==(const pector_iterator &lhs, const pector_iterator &rhs) noexcept
     {
         return lhs.m_parent == rhs.m_parent && lhs.m_index == rhs.m_index;
     }
 
-    friend auto operator<=>(const pector_iterator &lhs, const pector_iterator &rhs)
+    inline friend auto operator<=>(const pector_iterator &lhs, const pector_iterator &rhs) noexcept
     {
         if (lhs.m_parent != rhs.m_parent)
         {
@@ -143,114 +143,156 @@ public:
     using iterator_category = std::random_access_iterator_tag;
     using iterator_concept = std::random_access_iterator_tag;
     using value_type = T;
-    using pointer = T*;
-    using reference = T&;
+    using pointer = const T*;
+    using reference = const T&;
     using difference_type = std::ptrdiff_t;
 
 private:
+    using clean_type = std::remove_const_t<Container>;
+
     Container *m_parent = nullptr;
     size_t m_index = 0;
 
 public:
-    const_pector_iterator(const pector_iterator<T, Container> &other) :
+    inline const_pector_iterator(const pector_iterator<T, clean_type> &other) noexcept :
     m_parent(other.m_parent),
     m_index(other.m_index)
     {}
 
-    const_pector_iterator(Container *parent, size_t index) :
+    inline const_pector_iterator(Container *parent, size_t index) noexcept :
     m_parent(parent),
     m_index(index)
     {}
 
-    reference operator*() const
+    inline reference operator*() const noexcept
     {
         assert(this->m_parent && "[const_pector_iterator]::operator*() | Attempt to dereference .end().");
         return this->m_parent->operator[](this->m_index);
     }
     
-    pointer operator->() const
+    inline pointer operator->() const noexcept
     {
         assert(this->m_parent && "[const_pector_iterator]::operator*() | Attempt to dereference .end().");
         return &this->m_parent->operator[](this->m_index);
     }
 
-    reference operator[](difference_type n) const
+    inline reference operator[](difference_type n) const noexcept
     {
         assert(this->m_index + n <= this->m_parent->size() && "[const_pector_iterator]::operator(difference_type n) | Attempt to exceed .end().");
         return *(*this + n);
     }
 
-    const_pector_iterator& operator++()
+    inline const_pector_iterator& operator++() noexcept
     {
         assert(this->m_index + 1 <= this->m_parent->size() && "[const_pector_iterator]::operator++() | Attempt to exceed .end().");
         ++this->m_index;
         return *this;
     }
 
-    const_pector_iterator operator++(int)
+    inline const_pector_iterator operator++(int) noexcept
     {
         const_pector_iterator temp = *this;
         ++(*this);
         return temp;
     }
 
-    const_pector_iterator& operator--()
+    inline const_pector_iterator& operator--() noexcept
     {
         assert(this->m_index - 1 >= 0 && "[const_pector_iterator]::operator--() | Attempt to decrement before valid index (0).");
         --this->m_index;
         return *this;
     }
 
-    const_pector_iterator operator--(int)
+    inline const_pector_iterator operator--(int) noexcept
     {
         const_pector_iterator temp = *this;
         --(*this);
         return temp;
     }
 
-    const_pector_iterator& operator+=(difference_type n)
+    inline const_pector_iterator& operator+=(difference_type n) noexcept
     {
         assert(this->m_index + n <= this->m_parent->size() && "[const_pector_iterator]::operator+=(difference_type n) | Attempt to exceed .end().");
         this->m_index += n;
         return *this;
     }
 
-    const_pector_iterator& operator-=(difference_type n)
+    inline const_pector_iterator& operator-=(difference_type n) noexcept
     {
         assert(this->m_index - n >= 0 && "[const_pector_iterator]::operator-=(difference_type n) | Attempt to decrement before valid index (0).");
         this->m_index -= n;
         return *this;
     }
 
-    friend const_pector_iterator operator+(const_pector_iterator it, difference_type n)
+    inline friend const_pector_iterator operator+(const_pector_iterator it, difference_type n) noexcept
     {
         it += n;
         return it;
     }
 
-    friend const_pector_iterator operator+(difference_type n, const_pector_iterator it)
+    inline friend const_pector_iterator operator+(difference_type n, const_pector_iterator it) noexcept
     {
         it += n;
         return it;
     }
 
-    friend const_pector_iterator operator-(const_pector_iterator it, difference_type n)
+    inline friend const_pector_iterator operator-(const_pector_iterator it, difference_type n) noexcept
     {
         it -= n;
         return it;
     }
 
-    friend difference_type operator-(const const_pector_iterator &lhs, const const_pector_iterator &rhs)
+    inline friend difference_type operator-(const const_pector_iterator &lhs, const const_pector_iterator &rhs) noexcept
     {
         return lhs.m_index - rhs.m_index;
     }
 
-    friend bool operator==(const const_pector_iterator &lhs, const const_pector_iterator &rhs)
+    inline friend difference_type operator-(const const_pector_iterator &lhs, const pector_iterator<T, clean_type> &rhs) noexcept
+    {
+        return lhs.m_index - rhs.m_index;
+    }
+
+    inline friend difference_type operator-(const pector_iterator<T, clean_type> &lhs, const const_pector_iterator &rhs) noexcept
+    {
+        return lhs.m_index - rhs.m_index;
+    }
+
+    inline friend bool operator==(const const_pector_iterator &lhs, const const_pector_iterator &rhs) noexcept
     {
         return lhs.m_parent == rhs.m_parent && lhs.m_index == rhs.m_index;
     }
 
-    friend auto operator<=>(const const_pector_iterator &lhs, const const_pector_iterator &rhs)
+    inline friend bool operator==(const const_pector_iterator &lhs, const pector_iterator<T, clean_type> &rhs) noexcept
+    {
+        return lhs.m_parent == rhs.m_parent && lhs.m_index == rhs.m_index;
+    }
+
+    inline friend bool operator==(const pector_iterator<T, clean_type> &lhs, const const_pector_iterator &rhs) noexcept
+    {
+        return lhs.m_parent == rhs.m_parent && lhs.m_index == rhs.m_index;
+    }
+
+    inline friend auto operator<=>(const const_pector_iterator &lhs, const const_pector_iterator &rhs) noexcept
+    {
+        if (lhs.m_parent != rhs.m_parent)
+        {
+            return lhs.m_parent <=> rhs.m_parent;
+        }
+        
+        return lhs.m_index <=> rhs.m_index;
+    }
+
+    inline friend auto operator<=>(const const_pector_iterator &lhs, const pector_iterator<T, clean_type> &rhs) noexcept
+    {
+        if (lhs.m_parent != rhs.m_parent)
+        {
+            return lhs.m_parent <=> rhs.m_parent;
+        }
+        
+        return lhs.m_index <=> rhs.m_index;
+    }
+
+    inline friend auto operator<=>(const pector_iterator<T, clean_type> &lhs, const const_pector_iterator &rhs) noexcept
     {
         if (lhs.m_parent != rhs.m_parent)
         {

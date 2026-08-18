@@ -4,13 +4,18 @@
 
 void test::pector_tester::run()
 {
+    std::cout << "Starting pector_tester...\n";
     this->appendAndAccess();
 
     this->reserveAndResize();
 
     this->iterator();
 
-    this->moveSemantics();
+    this->const_iterator();
+
+    this->moveAndSwapSemantics();
+
+    std::cout << "pector_test unit tests passed...\n\n";
 }
 
 void test::pector_tester::appendAndAccess()
@@ -194,11 +199,41 @@ void test::pector_tester::iterator()
         p.push_back("new_string");
         assert(*p.begin() == "new_string");
     }
-
-    std::cout << "All sge::pector convenience iterator edge-cases passed successfully!\n\n";
 }
 
-void test::pector_tester::moveSemantics()
+void test::pector_tester::const_iterator()
+{
+    sge::pector<std::string> p;
+    p.resize(9000, "default");
+
+    for (auto it = p.cbegin() ; it != p.cend(); ++it)
+    {
+        assert(*it == "default");
+    }
+
+    auto it_jump = p.cbegin();
+    it_jump += p.size();
+
+    assert(it_jump == p.cend());
+    assert(it_jump == p.end());
+}
+
+void test::pector_tester::reverse_iterator()
+{
+    sge::pector<std::string> p;
+    for (size_t i = 0; i < 2200; ++i)
+    {
+        p.push_back("val_" + std::to_string(i));
+    }
+
+    size_t last = p.size() - 1;
+    for (auto it = p.rbegin(); it != p.rend(); ++it)
+    {
+        assert(*it == "val_" + std::to_string(last));
+    }
+}
+
+void test::pector_tester::moveAndSwapSemantics()
 {
     sge::pector<std::string> p;
     p.push_back("Hello");
@@ -234,4 +269,10 @@ void test::pector_tester::moveSemantics()
 
     p2.emplace_back("blud");
     assert(p2[0] == "blud");
+
+    p.emplace_back("Hello");
+    p.push_back("Bye");
+    p.swapElements(0, 1);
+    assert(p[0] == "Bye");
+    assert(p[1] == "Hello");
 }
